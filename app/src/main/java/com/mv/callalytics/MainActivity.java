@@ -3,6 +3,7 @@ package com.mv.callalytics;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.ContentResolver;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.Bundle;
@@ -25,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     GifImageView loadingGIFImage;
-    Button loadDataButton;
+    Button loadDataButton, showStatsButton;
     AllCallLogs allCallLogs = new AllCallLogs();
     AllContacts contacts = new AllContacts();
 
@@ -39,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
-        mPrefs = getPreferences(MODE_PRIVATE);
+        mPrefs = getSharedPreferences("My_Preferences", MODE_PRIVATE);
 
         Gson gson = new Gson();
         if(!mPrefs.getString("allCallLogs", "").equals("")){                                    // Check if not empty
@@ -66,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
                         allCallLogs.sort();
                         getAllContacts();
 
-                        for(int i=0; i<allCallLogs.size(); i++){
+                        /*for(int i=0; i<allCallLogs.size(); i++){
                             Log.d("QWERTEST", allCallLogs.get(i).toString());
                         }
 
@@ -74,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
 
                         for(int i=0; i<contacts.size(); i++){
                             Log.d("QWERTEST", contacts.get(i).name + " | " + contacts.get(i).phoneNo);
-                        }
+                        }*/
 
 
                         runOnUiThread(new Runnable() {
@@ -82,9 +83,9 @@ public class MainActivity extends AppCompatActivity {
                             public void run() {
 
                                 SharedPreferences.Editor prefsEditor = mPrefs.edit();
-                                Gson gson = new Gson();
                                 prefsEditor.putString("allCallLogs", gson.toJson(allCallLogs));
                                 prefsEditor.putString("contacts", gson.toJson(contacts));
+                                prefsEditor.putLong("dataLastLoaded", System.currentTimeMillis());
                                 prefsEditor.apply();
                                 loadingGIFImage.setVisibility(View.GONE);
                             }
@@ -94,6 +95,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        showStatsButton = findViewById(R.id.showStatsButton);
+        showStatsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent myIntent = new Intent(MainActivity.this, StatsActivity.class);
+                startActivity(myIntent);
+            }
+        });
     }
 
 

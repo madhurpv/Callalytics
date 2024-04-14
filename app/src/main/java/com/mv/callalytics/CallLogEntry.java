@@ -14,6 +14,10 @@ public class CallLogEntry {
     int duration;
 
     public CallLogEntry(String phoneNo, int type, long dateInMilliSec, int duration) {
+        phoneNo = phoneNo.replace(" ", "");
+        if(phoneNo.length() > 10) {
+            phoneNo = phoneNo.substring(phoneNo.length() - 10);
+        }
         this.phoneNo = phoneNo;
         this.type = type;
         this.dateInMilliSec = dateInMilliSec;

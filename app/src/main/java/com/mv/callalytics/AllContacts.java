@@ -34,4 +34,17 @@ public class AllContacts {
         numbers.clear();
     }
 
+    public String getContact(String phoneNo){
+        phoneNo = Contact.trimPhoneNo(phoneNo);
+        if(!numbers.contains(phoneNo)){
+            return phoneNo;
+        }
+        for(int i=0; i<contacts.size(); i++){
+            if(contacts.get(i).phoneNo.equals(phoneNo)){
+                return contacts.get(i).name;
+            }
+        }
+        return phoneNo;
+    }
+
 }
