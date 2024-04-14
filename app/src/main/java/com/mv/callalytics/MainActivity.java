@@ -19,9 +19,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import pl.droidsonroids.gif.GifImageView;
+
 public class MainActivity extends AppCompatActivity {
 
 
+    GifImageView loadingGIFImage;
     Button loadDataButton;
     AllCallLogs allCallLogs = new AllCallLogs();
     AllContacts contacts = new AllContacts();
@@ -46,29 +49,48 @@ public class MainActivity extends AppCompatActivity {
             contacts = gson.fromJson(mPrefs.getString("contacts", ""), AllContacts.class);
         }
 
+        loadingGIFImage = findViewById(R.id.loadingGIFImage);
+        loadingGIFImage.setVisibility(View.GONE);
 
         loadDataButton = findViewById(R.id.loadDataButton);
         loadDataButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 //Log.d("QWER", getCallDetails());
-                getCallDetails();
+                loadingGIFImage.setVisibility(View.VISIBLE);
 
-                for(int i=0; i<allCallLogs.size(); i++){
-                    Log.d("QWERTEST", allCallLogs.get(i).toString());
-                }
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        getCallDetails();
+                        allCallLogs.sort();
+                        getAllContacts();
+
+                        for(int i=0; i<allCallLogs.size(); i++){
+                            Log.d("QWERTEST", allCallLogs.get(i).toString());
+                        }
+
+                        Log.d("QWER", "Total Call Logs present : " + allCallLogs.size());
+
+                        for(int i=0; i<contacts.size(); i++){
+                            Log.d("QWERTEST", contacts.get(i).name + " | " + contacts.get(i).phoneNo);
+                        }
 
 
-                getAllContacts();
-                for(int i=0; i<contacts.size(); i++){
-                    Log.d("QWERTEST", contacts.get(i).name + " | " + contacts.get(i).phoneNo);
-                }
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
 
-                SharedPreferences.Editor prefsEditor = mPrefs.edit();
-                Gson gson = new Gson();
-                prefsEditor.putString("allCallLogs", gson.toJson(allCallLogs));
-                prefsEditor.putString("contacts", gson.toJson(contacts));
-                prefsEditor.apply();
+                                SharedPreferences.Editor prefsEditor = mPrefs.edit();
+                                Gson gson = new Gson();
+                                prefsEditor.putString("allCallLogs", gson.toJson(allCallLogs));
+                                prefsEditor.putString("contacts", gson.toJson(contacts));
+                                prefsEditor.apply();
+                                loadingGIFImage.setVisibility(View.GONE);
+                            }
+                        });
+                    }
+                }).start();
             }
         });
 

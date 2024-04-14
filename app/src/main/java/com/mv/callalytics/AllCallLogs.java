@@ -3,6 +3,7 @@ package com.mv.callalytics;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 
 public class AllCallLogs {
@@ -45,6 +46,10 @@ public class AllCallLogs {
     public void clear(){
         allCallLogs.clear();
         timesOfCalls.clear();
+    }
+
+    public void sort(){
+        this.allCallLogs.sort(Comparator.comparing(CallLogEntry::getDateInMilliSec));
     }
 
 

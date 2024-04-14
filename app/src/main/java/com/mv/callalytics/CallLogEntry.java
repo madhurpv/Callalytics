@@ -20,6 +20,10 @@ public class CallLogEntry {
         this.duration = duration;
     }
 
+    public long getDateInMilliSec() {
+        return dateInMilliSec;
+    }
+
     @NonNull
     @Override
     public String toString(){
