@@ -3,7 +3,9 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/users/madhur/Apps/AndroidStudio/Projects/Callalytics/app/src/main/res/drawable/background_gradient_stats.xml" value="0.139" />
         <entry key="..\:/users/madhur/Apps/AndroidStudio/Projects/Callalytics/app/src/main/res/drawable/border_background.xml" value="0.172" />
+        <entry key="..\:/users/madhur/Apps/AndroidStudio/Projects/Callalytics/app/src/main/res/drawable/chart_gradient.xml" value="0.139" />
         <entry key="..\:/users/madhur/Apps/AndroidStudio/Projects/Callalytics/app/src/main/res/layout/activity_main.xml" value="0.176" />
         <entry key="..\:/users/madhur/Apps/AndroidStudio/Projects/Callalytics/app/src/main/res/layout/activity_stats.xml" value="0.264" />
       </map>

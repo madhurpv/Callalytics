@@ -1,23 +1,46 @@
 package com.mv.callalytics;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.DashPathEffect;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.provider.CallLog;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.charts.Chart;
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.AxisBase;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+import com.github.mikephil.charting.utils.Utils;
 import com.google.gson.Gson;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
 
 import pl.droidsonroids.gif.GifImageView;
 
@@ -26,6 +49,8 @@ public class StatsActivity extends AppCompatActivity {
 
     GifImageView loadingGIFImage;
     TextView statsTextView;
+    LineChart lineChart;
+    BarChart barChart;
 
     AllCallLogs allCallLogs = new AllCallLogs();
     AllContacts contacts = new AllContacts();
@@ -38,6 +63,59 @@ public class StatsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stats);
+
+
+        lineChart = findViewById(R.id.lineChart);
+        lineChart.setTouchEnabled(true);
+        lineChart.setPinchZoom(true);
+
+        /*barChart = findViewById(R.id.barChart);
+        barChart.setTouchEnabled(true);
+        barChart.setPinchZoom(true);*/
+/*
+        ArrayList<Entry> values = new ArrayList<>();
+        values.add(new Entry(1, 50));
+        values.add(new Entry(2, 100));
+        values.add(new Entry(3, 200));
+        values.add(new Entry(4, 150));
+
+
+        LineDataSet set1;
+        if (mChart.getData() != null &&
+                mChart.getData().getDataSetCount() > 0) {
+            set1 = (LineDataSet) mChart.getData().getDataSetByIndex(0);
+            set1.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+            set1.setValues(values);
+            mChart.getData().notifyDataChanged();
+            mChart.notifyDataSetChanged();
+        } else {
+            set1 = new LineDataSet(values, "Sample Data");
+            set1.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+            set1.setDrawIcons(false);
+            set1.enableDashedLine(10f, 5f, 0f);
+            set1.enableDashedHighlightLine(10f, 5f, 0f);
+            set1.setColor(Color.DKGRAY);
+            set1.setCircleColor(Color.DKGRAY);
+            set1.setLineWidth(1f);
+            set1.setCircleRadius(3f);
+            set1.setDrawCircleHole(false);
+            set1.setValueTextSize(9f);
+            set1.setDrawFilled(true);
+            set1.setFormLineWidth(1f);
+            set1.setFormLineDashEffect(new DashPathEffect(new float[]{10f, 5f}, 0f));
+            set1.setFormSize(15.f);
+            set1.setFillColor(Color.DKGRAY);
+            ArrayList<ILineDataSet> dataSets = new ArrayList<>();
+            dataSets.add(set1);
+            LineData data = new LineData(dataSets);
+            mChart.setData(data);
+            mChart.animateX(2000);
+        }*/
+
+
+
+
+
 
 
         mPrefs = getSharedPreferences("My_Preferences", MODE_PRIVATE);
@@ -63,7 +141,7 @@ public class StatsActivity extends AppCompatActivity {
         STATS_totalCallDuration();
         STATS_averageCallDuration();
         STATS_mostCalls();
-        STATS_mostCallsOfType(CallLog.Calls.INCOMING_TYPE);
+        /*STATS_mostCallsOfType(CallLog.Calls.INCOMING_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.OUTGOING_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.MISSED_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.BLOCKED_TYPE);
@@ -73,12 +151,99 @@ public class StatsActivity extends AppCompatActivity {
         STATS_mostCallsOfDuration();
         STATS_mostCallsOfDuration(5);
         STATS_maxCallDurationInTotal();
-        STATS_monthWithMostCalls();
+        STATS_monthWithMostCalls();*/
 
         statsTextView.setText(statsString);
         statsTextView.setVisibility(View.VISIBLE);
         loadingGIFImage.setVisibility(View.GONE);
+
+
+        draw_chart();
     }
+
+
+
+
+
+
+
+
+
+
+    public void draw_chart() {
+        // Map to store the number of calls per month with the year and month as the key
+        Map<String, Integer> callsPerMonth = new TreeMap<>();
+
+        // Process the call logs to fill the map
+        for (CallLogEntry entry : allCallLogs.allCallLogs) {
+            Calendar callDate = Calendar.getInstance();
+            callDate.setTimeInMillis(entry.dateInMilliSec);
+            // Format the year and month key as "YYYY-MM"
+            String yearMonthKey = String.format("%d-%02d", callDate.get(Calendar.YEAR), callDate.get(Calendar.MONTH) + 1);
+
+            callsPerMonth.put(yearMonthKey, callsPerMonth.getOrDefault(yearMonthKey, 0) + 1);
+        }
+
+        // Convert the map data to Entry list for the chart
+        List<Entry> entries = new ArrayList<>();
+        List<String> sortedKeys = new ArrayList<>(callsPerMonth.keySet());
+
+        for (int i = 0; i < sortedKeys.size(); i++) {
+            String key = sortedKeys.get(i);
+            entries.add(new Entry(i, callsPerMonth.get(key)));
+        }
+
+        LineDataSet dataSet = new LineDataSet(entries, "Call Frequency");
+        dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
+        dataSet.setDrawFilled(true);//Color.parseColor("#00AAFF"));
+        dataSet.setFillDrawable(getResources().getDrawable(R.drawable.chart_gradient));
+        LineData lineData = new LineData(dataSet);
+        lineChart.setData(lineData);
+
+        // Customize the X-axis to show labels at the bottom
+        XAxis xAxis = lineChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setDrawGridLines(false);
+        xAxis.setGranularity(1f); // only intervals of 1 day
+        xAxis.setLabelCount(sortedKeys.size());
+
+        // Set a new ValueFormatter for the X-axis of the lineChart
+        lineChart.getXAxis().setValueFormatter(new ValueFormatter() {
+            private final SimpleDateFormat monthDateFormat = new SimpleDateFormat("MMM yyyy", Locale.ENGLISH);
+
+            @Override
+            public String getFormattedValue(float value) {
+                // Get the yearMonthKey corresponding to the value from the sortedKeys list
+                String yearMonthKey = sortedKeys.get((int) value);
+                try {
+                    // Parse the yearMonthKey into a Date object
+                    Date date = new SimpleDateFormat("yyyy-MM", Locale.ENGLISH).parse(yearMonthKey);
+                    // Format the Date object into a more readable form, e.g., "Nov 2023"
+                    return monthDateFormat.format(date);
+                } catch (ParseException e) {
+                    // In case of parsing error, return the yearMonthKey directly
+                    e.printStackTrace();
+                    return yearMonthKey;
+                }
+            }
+        });
+
+
+        lineChart.getLegend().setEnabled(false);
+        lineChart.getAxisLeft().setTextColor(Color.parseColor("#FFFFFF")); // left y-axis
+        lineChart.getAxisRight().setTextColor(Color.parseColor("#FFFFFF")); // left y-axis
+        lineChart.getXAxis().setTextColor(Color.parseColor("#FFFFFF"));
+        lineChart.getLegend().setTextColor(Color.parseColor("#00000000"));
+        lineChart.getDescription().setTextColor(Color.parseColor("#00000000"));
+        lineChart.invalidate(); // Refresh the chart
+        lineChart.animateY(1000);
+    }
+
+
+
+
+
 
 
     public void STATS_totalCalls(){

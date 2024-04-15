@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#FFFFFF"/> <!-- Background color -->
-    <stroke android:width="5dp" android:color="#000000"/> <!-- Border color -->
-    <corners android:radius="10dp"/> <!-- Rounded corners -->
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Transparent outer border to simulate margin -->
+    <item>
+        <shape>
+            <solid android:color="#FFFFFF" />
+            <padding
+                android:bottom="5dp"
+                android:left="5dp"
+                android:right="5dp"
+                android:top="5dp" />
+        </shape>
+    </item>
+    <!-- Actual shape with rounded corners and border -->
+    <item>
+        <shape>
+            <solid android:color="#FFFFFF"/> <!-- Background color -->
+            <stroke android:width="5dp" android:color="#000000"/> <!-- Border color -->
+            <corners android:radius="10dp"/> <!-- Rounded corners -->
+        </shape>
+    </item>
+</layer-list>
