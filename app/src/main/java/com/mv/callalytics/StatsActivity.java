@@ -5,19 +5,16 @@ import androidx.core.content.ContextCompat;
 
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.DashPathEffect;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.provider.CallLog;
 import android.util.Log;
+import android.util.Pair;
 import android.view.View;
 import android.widget.TextView;
 
 import com.github.mikephil.charting.charts.BarChart;
-import com.github.mikephil.charting.charts.Chart;
 import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.components.AxisBase;
 import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
@@ -26,8 +23,7 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
-import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
-import com.github.mikephil.charting.utils.Utils;
+import com.github.mikephil.charting.utils.ColorTemplate;
 import com.google.gson.Gson;
 
 import java.text.ParseException;
@@ -48,9 +44,9 @@ public class StatsActivity extends AppCompatActivity {
 
 
     GifImageView loadingGIFImage;
-    TextView statsTextView;
-    LineChart lineChart;
-    BarChart barChart;
+    TextView statsTextView, totalCallsTextView;
+    LineChart lineChart, lineChartAvgCall;
+    BarChart barChartMostCallDuration;
 
     AllCallLogs allCallLogs = new AllCallLogs();
     AllContacts contacts = new AllContacts();
@@ -58,6 +54,9 @@ public class StatsActivity extends AppCompatActivity {
     SharedPreferences mPrefs;
 
     String statsString = "";
+
+    ArrayList<String> listNamesMaxCalls = new ArrayList<>();
+    ArrayList<Float> listNamesTotalCalls  = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +67,14 @@ public class StatsActivity extends AppCompatActivity {
         lineChart = findViewById(R.id.lineChart);
         lineChart.setTouchEnabled(true);
         lineChart.setPinchZoom(true);
+
+        lineChartAvgCall = findViewById(R.id.lineChartAvgCall);
+        lineChartAvgCall.setTouchEnabled(true);
+        lineChartAvgCall.setPinchZoom(true);
+
+        barChartMostCallDuration = findViewById(R.id.barChartMostCallDuration);
+        barChartMostCallDuration.setTouchEnabled(true);
+        barChartMostCallDuration.setPinchZoom(true);
 
         /*barChart = findViewById(R.id.barChart);
         barChart.setTouchEnabled(true);
@@ -136,6 +143,11 @@ public class StatsActivity extends AppCompatActivity {
         statsTextView = findViewById(R.id.statsTextView);
         statsTextView.setVisibility(View.GONE);
 
+
+        totalCallsTextView = findViewById(R.id.totalCallsTextView);
+        totalCallsTextView.setText(String.valueOf(allCallLogs.size()) + " calls");
+
+
         STATS_totalCalls();
         STATS_totalContacts();
         STATS_totalCallDuration();
@@ -148,9 +160,9 @@ public class StatsActivity extends AppCompatActivity {
         STATS_mostCallsOfType(CallLog.Calls.REJECTED_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.VOICEMAIL_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.ANSWERED_EXTERNALLY_TYPE);
-        STATS_mostCallsOfDuration();
-        STATS_mostCallsOfDuration(5);
-        STATS_maxCallDurationInTotal();
+        STATS_mostCallsOfDuration();*/
+        STATS_mostCallsOfDuration(3);
+        /*STATS_maxCallDurationInTotal();
         STATS_monthWithMostCalls();*/
 
         statsTextView.setText(statsString);
@@ -158,7 +170,11 @@ public class StatsActivity extends AppCompatActivity {
         loadingGIFImage.setVisibility(View.GONE);
 
 
-        draw_chart();
+        draw_permonthcalls_chart();
+
+        draw_permonthavgcallduration_chart();
+
+        draw_mostcallduration_chart();
     }
 
 
@@ -170,7 +186,7 @@ public class StatsActivity extends AppCompatActivity {
 
 
 
-    public void draw_chart() {
+    public void draw_permonthcalls_chart() {
         // Map to store the number of calls per month with the year and month as the key
         Map<String, Integer> callsPerMonth = new TreeMap<>();
 
@@ -239,6 +255,168 @@ public class StatsActivity extends AppCompatActivity {
         lineChart.invalidate(); // Refresh the chart
         lineChart.animateY(1000);
     }
+
+
+    public void draw_permonthavgcallduration_chart() {
+        // Map to store the total duration and number of calls per month
+        Map<String, Pair<Integer, Integer>> durationAndCallsPerMonth = new TreeMap<>();
+
+        // Process the call logs to fill the map
+        for (CallLogEntry entry : allCallLogs.allCallLogs) {
+            Calendar callDate = Calendar.getInstance();
+            callDate.setTimeInMillis(entry.dateInMilliSec);
+            // Format the year and month key as "YYYY-MM"
+            String yearMonthKey = String.format("%d-%02d", callDate.get(Calendar.YEAR), callDate.get(Calendar.MONTH) + 1);
+
+            // Get the current values for the month
+            Pair<Integer, Integer> currentValues = durationAndCallsPerMonth.getOrDefault(yearMonthKey, new Pair<>(0, 0));
+            // Update the total duration and number of calls
+            durationAndCallsPerMonth.put(yearMonthKey, new Pair<>(currentValues.first + entry.duration, currentValues.second + 1));
+        }
+
+        // Convert the map data to Entry list for the chart
+        List<Entry> entries = new ArrayList<>();
+        List<String> sortedKeys = new ArrayList<>(durationAndCallsPerMonth.keySet());
+
+        for (int i = 0; i < sortedKeys.size(); i++) {
+            String key = sortedKeys.get(i);
+            Pair<Integer, Integer> values = durationAndCallsPerMonth.get(key);
+            // Calculate the average duration
+            float averageDuration = values.first / (float) values.second;
+            entries.add(new Entry(i, averageDuration));
+        }
+
+
+        LineDataSet dataSet = new LineDataSet(entries, "Call Frequency");
+        dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
+        dataSet.setDrawFilled(true);//Color.parseColor("#00AAFF"));
+        dataSet.setFillDrawable(getResources().getDrawable(R.drawable.chart_gradient));
+        dataSet.setValueTextColor(Color.parseColor("#FFFFFF"));
+        LineData lineData = new LineData(dataSet);
+        lineChartAvgCall.setData(lineData);
+
+        // Customize the X-axis to show labels at the bottom
+        XAxis xAxis = lineChartAvgCall.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setDrawGridLines(false);
+        xAxis.setGranularity(1f); // only intervals of 1 day
+        xAxis.setLabelCount(sortedKeys.size());
+
+        // Set a new ValueFormatter for the X-axis of the lineChart
+        lineChartAvgCall.getXAxis().setValueFormatter(new ValueFormatter() {
+            private final SimpleDateFormat monthDateFormat = new SimpleDateFormat("MMM yyyy", Locale.ENGLISH);
+
+            @Override
+            public String getFormattedValue(float value) {
+                // Get the yearMonthKey corresponding to the value from the sortedKeys list
+                String yearMonthKey = sortedKeys.get((int) value);
+                try {
+                    // Parse the yearMonthKey into a Date object
+                    Date date = new SimpleDateFormat("yyyy-MM", Locale.ENGLISH).parse(yearMonthKey);
+                    // Format the Date object into a more readable form, e.g., "Nov 2023"
+                    return monthDateFormat.format(date);
+                } catch (ParseException e) {
+                    // In case of parsing error, return the yearMonthKey directly
+                    e.printStackTrace();
+                    return yearMonthKey;
+                }
+            }
+        });
+
+        lineChartAvgCall.getAxisLeft().setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return value + " sec";
+            }
+        });
+
+
+        lineChartAvgCall.getLegend().setEnabled(false);
+        lineChartAvgCall.getAxisLeft().setTextColor(Color.parseColor("#FFFFFF")); // left y-axis
+        lineChartAvgCall.getAxisRight().setTextColor(Color.parseColor("#FFFFFF")); // left y-axis
+        lineChartAvgCall.getXAxis().setTextColor(Color.parseColor("#FFFFFF"));
+        lineChartAvgCall.getLegend().setTextColor(Color.parseColor("#00000000"));
+        lineChartAvgCall.getDescription().setTextColor(Color.parseColor("#00000000"));
+        lineChartAvgCall.invalidate(); // Refresh the chart
+        lineChartAvgCall.animateY(1000);
+    }
+
+
+    public void draw_mostcallduration_chart() {
+        String type = " sec";
+        if(Collections.min(listNamesTotalCalls) > 3600){
+            type = " hrs";
+            for(int i=0; i<listNamesTotalCalls.size(); i++){
+                listNamesTotalCalls.set(i, (float) (listNamesTotalCalls.get(i)/3600.0));
+            }
+        }
+        else if(Collections.min(listNamesTotalCalls) > 60){
+            type = " min";
+            for(int i=0; i<listNamesTotalCalls.size(); i++){
+                listNamesTotalCalls.set(i, (float) (listNamesTotalCalls.get(i)/60.0));
+            }
+        }
+
+        ArrayList<BarEntry> entries = new ArrayList<>();
+
+        // Create BarEntry for each item
+        for (int i = 0; i < listNamesTotalCalls.size(); i++) {
+            entries.add(new BarEntry(i, listNamesTotalCalls.get(i)));
+        }
+
+        BarDataSet dataSet = new BarDataSet(entries, "Label");
+        dataSet.setColors(ColorTemplate.MATERIAL_COLORS); // Set the color of the bars
+        dataSet.setDrawValues(true); // To show values on top of the bars
+
+        // Customizing the bar to have rounded corners
+        dataSet.setBarShadowColor(Color.parseColor("#FFF3F4F6"));
+        float barWidth = 0.95f; // Set the width of the bars
+        dataSet.setBarBorderWidth(barWidth);
+        dataSet.setGradientColor(Color.parseColor("#00000000"), Color.parseColor("#74F4E9"));
+        dataSet.setValueTextColor(Color.parseColor("#FFFFFF"));
+
+        BarData data = new BarData(dataSet);
+        data.setBarWidth(barWidth); // Set custom bar width
+
+        // Setting up the X-axis
+        XAxis xAxis = barChartMostCallDuration.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setDrawGridLines(false);
+        xAxis.setGranularity(1f);
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(listNamesMaxCalls));
+
+        // Setting up the Y-axis
+        YAxis leftAxis = barChartMostCallDuration.getAxisLeft();
+        leftAxis.setDrawGridLines(false);
+        YAxis rightAxis = barChartMostCallDuration.getAxisRight();
+        rightAxis.setDrawGridLines(false);
+
+        // Applying the data to the chart
+        barChartMostCallDuration.setData(data);
+        barChartMostCallDuration.setFitBars(true); // Make the x-axis fit exactly all bars
+        barChartMostCallDuration.getDescription().setEnabled(false); // Hide the description
+        barChartMostCallDuration.getLegend().setEnabled(false); // Hide the legend
+
+        String finalType = type;
+        barChartMostCallDuration.getAxisLeft().setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return Math.round(value) + finalType;
+            }
+        });
+
+        barChartMostCallDuration.getLegend().setEnabled(false);
+        barChartMostCallDuration.getAxisLeft().setTextColor(Color.parseColor("#FFFFFF")); // left y-axis
+        barChartMostCallDuration.getAxisRight().setTextColor(Color.parseColor("#FFFFFF")); // left y-axis
+        barChartMostCallDuration.getXAxis().setTextColor(Color.parseColor("#FFFFFF"));
+        barChartMostCallDuration.getLegend().setTextColor(Color.parseColor("#00000000"));
+        barChartMostCallDuration.getDescription().setTextColor(Color.parseColor("#00000000"));
+        // Refresh the chart
+        barChartMostCallDuration.invalidate();
+    }
+
+
 
 
 
@@ -365,6 +543,12 @@ public class StatsActivity extends AppCompatActivity {
             // Log the durations and their associated phone numbers
             Log.d("QWER_STATS", "Top " + (i + 1) + " Calls duration is with = " + contacts.getContact(phoneNo) + "\t\tTime in seconds = " + duration);
             statsString += "\nTop " + (i + 1) + " Calls duration is with = " + contacts.getContact(phoneNo) + "\tTime in seconds = " + duration;
+            String name = contacts.getContact(phoneNo);
+            if(name.length() > 8){
+                name = name.substring(0, 9) + "..";
+            }
+            listNamesMaxCalls.add(name);
+            listNamesTotalCalls.add((float) duration);
         }
     }
 
