@@ -70,4 +70,45 @@ public class CallLogEntry {
 
         return "PhoneNo : " + phoneNo + "\t\tType " + typeOfCallStr + "\t\tTime : " + new Date(dateInMilliSec) + "\t\tDuration : " + duration;
     }
+
+
+    public static String callLogTypeToString(int type){
+
+        String typeOfCallStr = "";
+        switch (type) {
+            case CallLog.Calls.OUTGOING_TYPE:
+                typeOfCallStr = "OUTGOING";
+                break;
+
+            case CallLog.Calls.INCOMING_TYPE:
+                typeOfCallStr = "INCOMING";
+                break;
+
+            case CallLog.Calls.MISSED_TYPE:
+                typeOfCallStr = "MISSED";
+                break;
+
+            case CallLog.Calls.BLOCKED_TYPE:
+                typeOfCallStr = "BLOCKED";
+                break;
+
+            case CallLog.Calls.REJECTED_TYPE:
+                typeOfCallStr = "REJECTED";
+                break;
+
+            case CallLog.Calls.VOICEMAIL_TYPE:
+                typeOfCallStr = "VOICEMAIL";
+                break;
+
+            case CallLog.Calls.ANSWERED_EXTERNALLY_TYPE:
+                typeOfCallStr = "ANS_EXT";
+                break;
+
+            default:
+                typeOfCallStr = String.valueOf(type);
+        }
+
+
+        return typeOfCallStr;
+    }
 }

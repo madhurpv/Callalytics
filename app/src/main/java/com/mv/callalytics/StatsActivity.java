@@ -2,15 +2,23 @@ package com.mv.callalytics;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
 
 import android.content.SharedPreferences;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.os.Bundle;
+import android.provider.CallLog;
 import android.util.Log;
 import android.util.Pair;
 import android.view.View;
 import android.widget.TextView;
 
+import com.github.mikephil.charting.animation.ChartAnimator;
+import com.github.mikephil.charting.buffer.BarBuffer;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -23,7 +31,12 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.interfaces.dataprovider.BarDataProvider;
+import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
+import com.github.mikephil.charting.renderer.BarChartRenderer;
 import com.github.mikephil.charting.utils.ColorTemplate;
+import com.github.mikephil.charting.utils.Transformer;
+import com.github.mikephil.charting.utils.ViewPortHandler;
 import com.google.gson.Gson;
 
 import java.text.ParseException;
@@ -46,7 +59,7 @@ public class StatsActivity extends AppCompatActivity {
     GifImageView loadingGIFImage;
     TextView statsTextView, totalCallsTextView;
     LineChart lineChart, lineChartAvgCall;
-    BarChart barChartMostCallDuration;
+    BarChart barChartMostCallDuration, barChartCallTypes;
 
     AllCallLogs allCallLogs = new AllCallLogs();
     AllContacts contacts = new AllContacts();
@@ -57,6 +70,10 @@ public class StatsActivity extends AppCompatActivity {
 
     ArrayList<String> listNamesMaxCalls = new ArrayList<>();
     ArrayList<Float> listNamesTotalCalls  = new ArrayList<>();
+
+
+    ArrayList<String> listNamesMaxCallTypes = new ArrayList<>();
+    ArrayList<Float> listNamesTotalCallTypes  = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,6 +92,10 @@ public class StatsActivity extends AppCompatActivity {
         barChartMostCallDuration = findViewById(R.id.barChartMostCallDuration);
         barChartMostCallDuration.setTouchEnabled(true);
         barChartMostCallDuration.setPinchZoom(true);
+
+        barChartCallTypes = findViewById(R.id.barChartCallTypes);
+        barChartCallTypes.setTouchEnabled(true);
+        barChartCallTypes.setPinchZoom(true);
 
         /*barChart = findViewById(R.id.barChart);
         barChart.setTouchEnabled(true);
@@ -153,14 +174,14 @@ public class StatsActivity extends AppCompatActivity {
         STATS_totalCallDuration();
         STATS_averageCallDuration();
         STATS_mostCalls();
-        /*STATS_mostCallsOfType(CallLog.Calls.INCOMING_TYPE);
+        STATS_mostCallsOfType(CallLog.Calls.INCOMING_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.OUTGOING_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.MISSED_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.BLOCKED_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.REJECTED_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.VOICEMAIL_TYPE);
         STATS_mostCallsOfType(CallLog.Calls.ANSWERED_EXTERNALLY_TYPE);
-        STATS_mostCallsOfDuration();*/
+        /*STATS_mostCallsOfDuration();*/
         STATS_mostCallsOfDuration(3);
         /*STATS_maxCallDurationInTotal();
         STATS_monthWithMostCalls();*/
@@ -175,6 +196,8 @@ public class StatsActivity extends AppCompatActivity {
         draw_permonthavgcallduration_chart();
 
         draw_mostcallduration_chart();
+
+        draw_calltypes_chart();
     }
 
 
@@ -213,8 +236,12 @@ public class StatsActivity extends AppCompatActivity {
         dataSet.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
         dataSet.setDrawFilled(true);//Color.parseColor("#00AAFF"));
         dataSet.setFillDrawable(getResources().getDrawable(R.drawable.chart_gradient));
+        dataSet.setValueTextColor(Color.parseColor("#FFFFFF"));
+        dataSet.setValueTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
         LineData lineData = new LineData(dataSet);
         lineChart.setData(lineData);
+        lineChart.getAxisLeft().setDrawGridLines(false);
+        lineChart.getAxisRight().setDrawGridLines(false);
 
         // Customize the X-axis to show labels at the bottom
         XAxis xAxis = lineChart.getXAxis();
@@ -252,6 +279,9 @@ public class StatsActivity extends AppCompatActivity {
         lineChart.getXAxis().setTextColor(Color.parseColor("#FFFFFF"));
         lineChart.getLegend().setTextColor(Color.parseColor("#00000000"));
         lineChart.getDescription().setTextColor(Color.parseColor("#00000000"));
+        lineChart.getAxisLeft().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+        lineChart.getAxisRight().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+        lineChart.getXAxis().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
         lineChart.invalidate(); // Refresh the chart
         lineChart.animateY(1000);
     }
@@ -292,8 +322,11 @@ public class StatsActivity extends AppCompatActivity {
         dataSet.setDrawFilled(true);//Color.parseColor("#00AAFF"));
         dataSet.setFillDrawable(getResources().getDrawable(R.drawable.chart_gradient));
         dataSet.setValueTextColor(Color.parseColor("#FFFFFF"));
+        dataSet.setValueTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
         LineData lineData = new LineData(dataSet);
         lineChartAvgCall.setData(lineData);
+        lineChartAvgCall.getAxisLeft().setDrawGridLines(false);
+        lineChartAvgCall.getAxisRight().setDrawGridLines(false);
 
         // Customize the X-axis to show labels at the bottom
         XAxis xAxis = lineChartAvgCall.getXAxis();
@@ -338,6 +371,9 @@ public class StatsActivity extends AppCompatActivity {
         lineChartAvgCall.getXAxis().setTextColor(Color.parseColor("#FFFFFF"));
         lineChartAvgCall.getLegend().setTextColor(Color.parseColor("#00000000"));
         lineChartAvgCall.getDescription().setTextColor(Color.parseColor("#00000000"));
+        lineChartAvgCall.getAxisLeft().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+        lineChartAvgCall.getAxisRight().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+        lineChartAvgCall.getXAxis().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
         lineChartAvgCall.invalidate(); // Refresh the chart
         lineChartAvgCall.animateY(1000);
     }
@@ -366,7 +402,6 @@ public class StatsActivity extends AppCompatActivity {
         }
 
         BarDataSet dataSet = new BarDataSet(entries, "Label");
-        dataSet.setColors(ColorTemplate.MATERIAL_COLORS); // Set the color of the bars
         dataSet.setDrawValues(true); // To show values on top of the bars
 
         // Customizing the bar to have rounded corners
@@ -375,6 +410,8 @@ public class StatsActivity extends AppCompatActivity {
         dataSet.setBarBorderWidth(barWidth);
         dataSet.setGradientColor(Color.parseColor("#00000000"), Color.parseColor("#74F4E9"));
         dataSet.setValueTextColor(Color.parseColor("#FFFFFF"));
+        dataSet.setBarBorderColor(Color.parseColor("#00000000"));
+        dataSet.setValueTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
 
         BarData data = new BarData(dataSet);
         data.setBarWidth(barWidth); // Set custom bar width
@@ -412,8 +449,98 @@ public class StatsActivity extends AppCompatActivity {
         barChartMostCallDuration.getXAxis().setTextColor(Color.parseColor("#FFFFFF"));
         barChartMostCallDuration.getLegend().setTextColor(Color.parseColor("#00000000"));
         barChartMostCallDuration.getDescription().setTextColor(Color.parseColor("#00000000"));
+        barChartMostCallDuration.getAxisLeft().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+        barChartMostCallDuration.getAxisRight().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+        barChartMostCallDuration.getXAxis().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
         // Refresh the chart
         barChartMostCallDuration.invalidate();
+    }
+
+
+    public void draw_calltypes_chart() {
+        ArrayList<String> callTypesNames = new ArrayList<>();
+        ArrayList<Integer> callTypesValues = new ArrayList<>();
+
+        callTypesNames.add(CallLogEntry.callLogTypeToString(CallLog.Calls.INCOMING_TYPE));
+        callTypesNames.add(CallLogEntry.callLogTypeToString(CallLog.Calls.OUTGOING_TYPE));
+        callTypesNames.add(CallLogEntry.callLogTypeToString(CallLog.Calls.MISSED_TYPE));
+        callTypesNames.add(CallLogEntry.callLogTypeToString(CallLog.Calls.VOICEMAIL_TYPE));
+        callTypesNames.add(CallLogEntry.callLogTypeToString(CallLog.Calls.REJECTED_TYPE));
+        callTypesNames.add(CallLogEntry.callLogTypeToString(CallLog.Calls.BLOCKED_TYPE));
+        //callTypesNames.add(CallLogEntry.callLogTypeToString(CallLog.Calls.ANSWERED_EXTERNALLY_TYPE));
+
+        callTypesValues.add(0);
+        callTypesValues.add(0);
+        callTypesValues.add(0);
+        callTypesValues.add(0);
+        callTypesValues.add(0);
+        callTypesValues.add(0);
+        //callTypesValues.add(0);
+
+        for(int i=0; i<allCallLogs.size(); i++){
+            callTypesValues.set(allCallLogs.allCallLogs.get(i).type-1, callTypesValues.get(allCallLogs.allCallLogs.get(i).type-1)+1);
+        }
+
+        ArrayList<BarEntry> entries = new ArrayList<>();
+
+        // Create BarEntry for each item
+        for (int i = 0; i < callTypesValues.size(); i++) {
+            entries.add(new BarEntry(i, callTypesValues.get(i)));
+        }
+
+        BarDataSet dataSet = new BarDataSet(entries, "Label");
+        dataSet.setDrawValues(true); // To show values on top of the bars
+
+        // Customizing the bar to have rounded corners
+        dataSet.setBarShadowColor(Color.parseColor("#FFF3F4F6"));
+        float barWidth = 0.95f; // Set the width of the bars
+        dataSet.setBarBorderWidth(barWidth);
+        dataSet.setGradientColor(Color.parseColor("#00000000"), Color.parseColor("#74F4E9"));
+        dataSet.setBarBorderColor(Color.parseColor("#00000000"));
+        dataSet.setValueTextColor(Color.parseColor("#FFFFFF"));
+        dataSet.setValueTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+
+        BarData data = new BarData(dataSet);
+        data.setBarWidth(barWidth); // Set custom bar width
+
+        // Setting up the X-axis
+        XAxis xAxis = barChartCallTypes.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setDrawGridLines(false);
+        xAxis.setGranularity(1f);
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(callTypesNames));
+        xAxis.setTextSize(xAxis.getTextSize()/6);
+
+        // Setting up the Y-axis
+        YAxis leftAxis = barChartCallTypes.getAxisLeft();
+        leftAxis.setDrawGridLines(false);
+        YAxis rightAxis = barChartCallTypes.getAxisRight();
+        rightAxis.setDrawGridLines(false);
+
+        // Applying the data to the chart
+        barChartCallTypes.setData(data);
+        barChartCallTypes.setFitBars(true); // Make the x-axis fit exactly all bars
+        barChartCallTypes.getDescription().setEnabled(false); // Hide the description
+        barChartCallTypes.getLegend().setEnabled(false); // Hide the legend
+
+        /*barChartCallTypes.getAxisLeft().setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return Math.round(value) + finalType;
+            }
+        });*/
+
+        barChartCallTypes.getLegend().setEnabled(false);
+        barChartCallTypes.getAxisLeft().setTextColor(Color.parseColor("#FFFFFF")); // left y-axis
+        barChartCallTypes.getAxisRight().setTextColor(Color.parseColor("#FFFFFF")); // left y-axis
+        barChartCallTypes.getXAxis().setTextColor(Color.parseColor("#FFFFFF"));
+        barChartCallTypes.getLegend().setTextColor(Color.parseColor("#00000000"));
+        barChartCallTypes.getDescription().setTextColor(Color.parseColor("#00000000"));
+        barChartCallTypes.getAxisLeft().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+        barChartCallTypes.getAxisRight().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+        barChartCallTypes.getXAxis().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
+        // Refresh the chart
+        barChartCallTypes.invalidate();
     }
 
 
@@ -496,6 +623,8 @@ public class StatsActivity extends AppCompatActivity {
 
         Log.d("QWER_STATS", "Most Calls of type " + type + " to = " + contacts.getContact(mostFrequentPhoneNo) + "\t\tFrequency = " + maxCalls);
         statsString += "\nMost Calls of type " + type + " to = " + contacts.getContact(mostFrequentPhoneNo) + "\tFrequency = " + maxCalls;
+        //listNamesMaxCallTypes.add(CallLogEntry.callLogTypeToString(type));
+        //listNamesTotalCallTypes.add((float) maxCalls);
     }
 
 
