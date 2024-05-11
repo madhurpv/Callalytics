@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.res.ResourcesCompat;
 
 import android.content.SharedPreferences;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.provider.CallLog;
@@ -24,6 +25,11 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.renderer.XAxisRenderer;
+import com.github.mikephil.charting.utils.MPPointF;
+import com.github.mikephil.charting.utils.Transformer;
+import com.github.mikephil.charting.utils.Utils;
+import com.github.mikephil.charting.utils.ViewPortHandler;
 import com.google.gson.Gson;
 
 import java.text.ParseException;
@@ -64,7 +70,7 @@ public class StatsActivity extends AppCompatActivity {
 
 
     ArrayList<String> listNamesMaxCallTypes = new ArrayList<>();
-    ArrayList<Float> listNamesTotalCallTypes  = new ArrayList<>();
+    ArrayList<Float> listNamesTotalCallTypes = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -136,21 +142,15 @@ public class StatsActivity extends AppCompatActivity {
         }*/
 
 
-
-
-
-
-
         mPrefs = getSharedPreferences("My_Preferences", MODE_PRIVATE);
 
         Gson gson = new Gson();
-        if(!mPrefs.getString("allCallLogs", "").equals("")){                                    // Check if not empty
+        if (!mPrefs.getString("allCallLogs", "").equals("")) {                                    // Check if not empty
             allCallLogs = gson.fromJson(mPrefs.getString("allCallLogs", ""), AllCallLogs.class);
         }
-        if(!mPrefs.getString("contacts", "").equals("")) {                                    // Check if not empty
+        if (!mPrefs.getString("contacts", "").equals("")) {                                    // Check if not empty
             contacts = gson.fromJson(mPrefs.getString("contacts", ""), AllContacts.class);
         }
-
 
 
         loadingGIFImage = findViewById(R.id.loadingGIFImage);
@@ -183,7 +183,7 @@ public class StatsActivity extends AppCompatActivity {
         STATS_mostCalls(3);
 
         statsTextView.setText(statsString);
-        statsTextView.setVisibility(View.VISIBLE);
+        //statsTextView.setVisibility(View.VISIBLE);
         loadingGIFImage.setVisibility(View.GONE);
 
 
@@ -197,14 +197,6 @@ public class StatsActivity extends AppCompatActivity {
 
         draw_mostcalls_chart();
     }
-
-
-
-
-
-
-
-
 
 
     public void draw_permonthcalls_chart() {
@@ -251,7 +243,7 @@ public class StatsActivity extends AppCompatActivity {
 
         // Set a new ValueFormatter for the X-axis of the lineChart
         lineChart.getXAxis().setValueFormatter(new ValueFormatter() {
-            private final SimpleDateFormat monthDateFormat = new SimpleDateFormat("MMM yyyy", Locale.ENGLISH);
+            private final SimpleDateFormat monthDateFormat = new SimpleDateFormat("MMM \nyy", Locale.ENGLISH);
 
             @Override
             public String getFormattedValue(float value) {
@@ -270,6 +262,8 @@ public class StatsActivity extends AppCompatActivity {
             }
         });
 
+        lineChart.setXAxisRenderer(new CustomXAxisRenderer(lineChart.getViewPortHandler(), lineChart.getXAxis(), lineChart.getTransformer(YAxis.AxisDependency.LEFT)));
+
 
         lineChart.getLegend().setEnabled(false);
         lineChart.getAxisLeft().setTextColor(Color.parseColor("#FFFFFF")); // left y-axis
@@ -280,7 +274,7 @@ public class StatsActivity extends AppCompatActivity {
         lineChart.getAxisLeft().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
         lineChart.getAxisRight().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
         lineChart.getXAxis().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
-        lineChart.setExtraBottomOffset(10);
+        lineChart.setExtraBottomOffset(20);
         lineChart.invalidate(); // Refresh the chart
         lineChart.animateY(1000);
     }
@@ -335,26 +329,24 @@ public class StatsActivity extends AppCompatActivity {
         xAxis.setGranularity(1f); // only intervals of 1 day
         xAxis.setLabelCount(sortedKeys.size());
 
-        // Set a new ValueFormatter for the X-axis of the lineChart
         lineChartAvgCall.getXAxis().setValueFormatter(new ValueFormatter() {
-            private final SimpleDateFormat monthDateFormat = new SimpleDateFormat("MMM yyyy", Locale.ENGLISH);
+            private final SimpleDateFormat monthDateFormat = new SimpleDateFormat("MMM \nyy", Locale.ENGLISH);
 
             @Override
             public String getFormattedValue(float value) {
                 // Get the yearMonthKey corresponding to the value from the sortedKeys list
                 String yearMonthKey = sortedKeys.get((int) value);
                 try {
-                    // Parse the yearMonthKey into a Date object
                     Date date = new SimpleDateFormat("yyyy-MM", Locale.ENGLISH).parse(yearMonthKey);
-                    // Format the Date object into a more readable form, e.g., "Nov 2023"
                     return monthDateFormat.format(date);
                 } catch (ParseException e) {
-                    // In case of parsing error, return the yearMonthKey directly
                     e.printStackTrace();
                     return yearMonthKey;
                 }
             }
         });
+
+        lineChartAvgCall.setXAxisRenderer(new CustomXAxisRenderer(lineChartAvgCall.getViewPortHandler(), lineChartAvgCall.getXAxis(), lineChartAvgCall.getTransformer(YAxis.AxisDependency.LEFT)));
 
         lineChartAvgCall.getAxisLeft().setValueFormatter(new ValueFormatter() {
             @Override
@@ -373,7 +365,7 @@ public class StatsActivity extends AppCompatActivity {
         lineChartAvgCall.getAxisLeft().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
         lineChartAvgCall.getAxisRight().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
         lineChartAvgCall.getXAxis().setTypeface(ResourcesCompat.getFont(this, R.font.baloo_paaji));
-        lineChartAvgCall.setExtraBottomOffset(10);
+        lineChartAvgCall.setExtraBottomOffset(20);
         lineChartAvgCall.invalidate(); // Refresh the chart
         lineChartAvgCall.animateY(1000);
     }
@@ -381,16 +373,15 @@ public class StatsActivity extends AppCompatActivity {
 
     public void draw_mostcallduration_chart() {
         String type = " sec";
-        if(Collections.min(listNamesTotalCallDurations) > 3600){
+        if (Collections.min(listNamesTotalCallDurations) > 3600) {
             type = " hrs";
-            for(int i = 0; i< listNamesTotalCallDurations.size(); i++){
-                listNamesTotalCallDurations.set(i, (float) (listNamesTotalCallDurations.get(i)/3600.0));
+            for (int i = 0; i < listNamesTotalCallDurations.size(); i++) {
+                listNamesTotalCallDurations.set(i, (float) (listNamesTotalCallDurations.get(i) / 3600.0));
             }
-        }
-        else if(Collections.min(listNamesTotalCallDurations) > 60){
+        } else if (Collections.min(listNamesTotalCallDurations) > 60) {
             type = " min";
-            for(int i = 0; i< listNamesTotalCallDurations.size(); i++){
-                listNamesTotalCallDurations.set(i, (float) (listNamesTotalCallDurations.get(i)/60.0));
+            for (int i = 0; i < listNamesTotalCallDurations.size(); i++) {
+                listNamesTotalCallDurations.set(i, (float) (listNamesTotalCallDurations.get(i) / 60.0));
             }
         }
 
@@ -534,11 +525,11 @@ public class StatsActivity extends AppCompatActivity {
         callTypesValues.add(0);
         //callTypesValues.add(0);
 
-        for(int i=0; i<allCallLogs.size(); i++){
-            if(i == CallLog.Calls.VOICEMAIL_TYPE || i == CallLog.Calls.BLOCKED_TYPE){
+        for (int i = 0; i < allCallLogs.size(); i++) {
+            if (i == CallLog.Calls.VOICEMAIL_TYPE || i == CallLog.Calls.BLOCKED_TYPE) {
                 continue;
             }
-            callTypesValues.set(allCallLogs.allCallLogs.get(i).type-1, callTypesValues.get(allCallLogs.allCallLogs.get(i).type-1)+1);
+            callTypesValues.set(allCallLogs.allCallLogs.get(i).type - 1, callTypesValues.get(allCallLogs.allCallLogs.get(i).type - 1) + 1);
         }
         callTypesValues.remove(5);
         callTypesValues.remove(3);
@@ -571,7 +562,7 @@ public class StatsActivity extends AppCompatActivity {
         xAxis.setDrawGridLines(false);
         xAxis.setGranularity(1f);
         xAxis.setValueFormatter(new IndexAxisValueFormatter(callTypesNames));
-        xAxis.setTextSize(xAxis.getTextSize()/2.9f);
+        xAxis.setTextSize(xAxis.getTextSize() / 2.9f);
 
         // Setting up the Y-axis
         YAxis leftAxis = barChartCallTypes.getAxisLeft();
@@ -607,26 +598,19 @@ public class StatsActivity extends AppCompatActivity {
     }
 
 
-
-
-
-
-
-
-
-    public void STATS_totalCalls(){
+    public void STATS_totalCalls() {
         int totalCalls = allCallLogs.size();
         Log.d("QWER_STATS", "Total Calls = " + totalCalls);
         statsString += "\nTotal Calls = " + totalCalls;
     }
 
-    public void STATS_totalContacts(){
+    public void STATS_totalContacts() {
         int totalContacts = contacts.size();
         Log.d("QWER_STATS", "Total Contacts = " + totalContacts);
         statsString += "\nTotal Contacts = " + totalContacts;
     }
 
-    public void STATS_totalCallDuration(){
+    public void STATS_totalCallDuration() {
         int totalDuration = 0;
         for (CallLogEntry entry : allCallLogs.allCallLogs) {
             totalDuration += entry.duration;
@@ -635,17 +619,17 @@ public class StatsActivity extends AppCompatActivity {
         statsString += "\nTotal Call duration in seconds = " + totalDuration;
     }
 
-    public void STATS_averageCallDuration(){
+    public void STATS_averageCallDuration() {
         int totalDuration = 0;
         for (CallLogEntry entry : allCallLogs.allCallLogs) {
             totalDuration += entry.duration;
         }
-        float averageDuration = totalDuration*1.0f/allCallLogs.size();
+        float averageDuration = totalDuration * 1.0f / allCallLogs.size();
         Log.d("QWER_STATS", "Total Call duration in seconds = " + averageDuration);
         statsString += "\nTotal Call duration in seconds = " + averageDuration;
     }
 
-    public void STATS_mostCalls(){
+    public void STATS_mostCalls() {
         HashMap<String, Integer> frequencyMap = new HashMap<>();
         String mostFrequentPhoneNo = null;
         int maxCalls = 0;
@@ -698,7 +682,7 @@ public class StatsActivity extends AppCompatActivity {
         for (Map.Entry<String, Integer> entry : topCalls) {
             //Log.d("QWER_STATS", "Top Call to: " + contacts.getContact(entry.getKey()) + " - Frequency: " + entry.getValue());
             String name = contacts.getContact(entry.getKey());
-            if(name.length() > 8){
+            if (name.length() > 8) {
                 name = name.substring(0, 9) + "..";
             }
             listNamesMaxCalls.add(name);
@@ -707,9 +691,7 @@ public class StatsActivity extends AppCompatActivity {
     }
 
 
-
-
-    public void STATS_mostCallsOfType(int type){
+    public void STATS_mostCallsOfType(int type) {
         HashMap<String, Integer> frequencyMap = new HashMap<>();
         String mostFrequentPhoneNo = null;
         int maxCalls = 0;
@@ -734,7 +716,7 @@ public class StatsActivity extends AppCompatActivity {
     }
 
 
-    public void STATS_mostCallsOfDuration(){                     // eg.  Most Calls duration is with = Hrishikesh Potnis		Time in seconds = 113371
+    public void STATS_mostCallsOfDuration() {                     // eg.  Most Calls duration is with = Hrishikesh Potnis		Time in seconds = 113371
         HashMap<String, Integer> durationMap = new HashMap<>();
         String phoneNoWithMaxDuration = null;
         int maxDuration = 0;
@@ -779,7 +761,7 @@ public class StatsActivity extends AppCompatActivity {
             Log.d("QWER_STATS", "Top " + (i + 1) + " Calls duration is with = " + contacts.getContact(phoneNo) + "\t\tTime in seconds = " + duration);
             statsString += "\nTop " + (i + 1) + " Calls duration is with = " + contacts.getContact(phoneNo) + "\tTime in seconds = " + duration;
             String name = contacts.getContact(phoneNo);
-            if(name.length() > 8){
+            if (name.length() > 8) {
                 name = name.substring(0, 9) + "..";
             }
             listNamesMaxCallDurations.add(name);
@@ -788,7 +770,7 @@ public class StatsActivity extends AppCompatActivity {
     }
 
 
-    public void STATS_maxCallDurationInTotal(){
+    public void STATS_maxCallDurationInTotal() {
         int maxDuration = 0;
         CallLogEntry maxCallLog = null;
         for (CallLogEntry entry : allCallLogs.allCallLogs) {
@@ -801,7 +783,7 @@ public class StatsActivity extends AppCompatActivity {
         statsString += "\nMaximum Call duration in seconds = " + maxDuration + "\twith " + contacts.getContact(maxCallLog.phoneNo) + "\ton " + new Date(maxCallLog.dateInMilliSec);
     }
 
-    public void STATS_monthWithMostCalls(){
+    public void STATS_monthWithMostCalls() {
         HashMap<Integer, Integer> callCountByMonth = new HashMap<>();
         for (CallLogEntry entry : allCallLogs.allCallLogs) {
             Calendar calendar = Calendar.getInstance();
@@ -827,4 +809,25 @@ public class StatsActivity extends AppCompatActivity {
         statsString += "\nMonth with Maximum Calls = " + months[monthWithMostCalls] + "\twith calls = " + maxCalls;
     }
 
+
+
+
+
+
+
+
+    public static class CustomXAxisRenderer extends XAxisRenderer {        // Source - https://stackoverflow.com/questions/32509174/in-mpandroidchart-library-how-to-wrap-x-axis-labels-to-two-lines-when-long
+        public CustomXAxisRenderer(ViewPortHandler viewPortHandler, XAxis xAxis, Transformer trans) {
+            super(viewPortHandler, xAxis, trans);
+        }
+
+        @Override
+        protected void drawLabel(Canvas c, String formattedLabel, float x, float y, MPPointF anchor, float angleDegrees) {
+            String[] line = formattedLabel.split("\n");
+            Utils.drawXAxisValue(c, line[0], x, y, mAxisLabelPaint, anchor, angleDegrees);
+            for (int i=1; i<line.length; i++) {
+                Utils.drawXAxisValue(c, line[i], x, y + mAxisLabelPaint.getTextSize() * i, mAxisLabelPaint, anchor, angleDegrees);
+            }
+        }
+    }
 }
